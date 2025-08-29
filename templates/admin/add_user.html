@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block title %}Add User - LDAP Management Portal{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="fas fa-user-plus"></i> Add New User
+    </h1>
+    <a href="{{ url_for('admin_users') }}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Back to Users
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-user-edit"></i> User Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="username" class="form-label">Username *</label>
+                                <input type="text" class="form-control" id="username" name="username" required>
+                                <div class="form-text">Unique identifier for the user</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Password *</label>
+                                <input type="password" class="form-control" id="password" name="password" required>
+                                <div class="form-text">Initial password for the user</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="first_name" class="form-label">First Name *</label>
+                                <input type="text" class="form-control" id="first_name" name="first_name" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="last_name" class="form-label">Last Name *</label>
+                                <input type="text" class="form-control" id="last_name" name="last_name" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email Address *</label>
+                        <input type="email" class="form-control" id="email" name="email" required>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="phone" class="form-label">Phone Number</label>
+                                <input type="tel" class="form-control" id="phone" name="phone">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="title" class="form-label">Job Title</label>
+                                <input type="text" class="form-control" id="title" name="title">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="password_expiry_days" class="form-label">Password Expiry (Days)</label>
+                                <input type="number" class="form-control" id="password_expiry_days" name="password_expiry_days" value="90" min="1" max="9999">
+                                <div class="form-text">Number of days until password expires (default: 90 days)</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- POSIX Account Section -->
+                    <div class="card border-secondary mb-3">
+                        <div class="card-header bg-light">
+                            <h6 class="card-title mb-0">
+                                <i class="fas fa-server"></i> POSIX Account (Linux/Unix System Access)
+                            </h6>
+                            <small class="text-muted">Optional: Enable this user for Linux/Unix system login</small>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="home_directory" class="form-label">Home Directory</label>
+                                        <input type="text" class="form-control" id="home_directory" name="home_directory" 
+                                               placeholder="e.g., /home/username">
+                                        <div class="form-text">Default: /home/username</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="login_shell" class="form-label">Login Shell</label>
+                                        <select class="form-select" id="login_shell" name="login_shell">
+                                            <option value="">(Default: /bin/bash)</option>
+                                            <option value="/bin/bash">/bin/bash</option>
+                                            <option value="/bin/sh">/bin/sh</option>
+                                            <option value="/bin/zsh">/bin/zsh</option>
+                                            <option value="/bin/csh">/bin/csh</option>
+                                            <option value="/bin/tcsh">/bin/tcsh</option>
+                                            <option value="/usr/bin/fish">/usr/bin/fish</option>
+                                            <option value="/sbin/nologin">/sbin/nologin (No login)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="uid_number" class="form-label">UID Number</label>
+                                        <input type="number" class="form-control" id="uid_number" name="uid_number" 
+                                               min="1000" max="65535" placeholder="Auto-generated">
+                                        <div class="form-text">Leave empty for auto-generation (starts from 1000)</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="gid_number" class="form-label">GID Number (Primary Group)</label>
+                                        <input type="number" class="form-control" id="gid_number" name="gid_number" 
+                                               min="1000" max="65535" placeholder="Auto-generated">
+                                        <div class="form-text">Leave empty for auto-generation (starts from 1000)</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="alert alert-info mb-0">
+                                <i class="fas fa-info-circle"></i>
+                                <strong>Note:</strong> Filling any POSIX field will enable POSIX account features and add 
+                                <code>posixAccount</code> and <code>shadowAccount</code> object classes.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Note:</strong> The user will be created in the organizational unit:
+                        <code>ou=People,dc=mylab,dc=lan</code>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('admin_users') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-user-plus"></i> Create User
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle"></i> User Creation Info
+                </h5>
+            </div>
+            <div class="card-body">
+                <h6>Base Object Classes</h6>
+                <ul class="list-unstyled">
+                    <li><code>inetOrgPerson</code></li>
+                    <li><code>organizationalPerson</code></li>
+                    <li><code>person</code></li>
+                    <li><code>top</code></li>
+                </ul>
+
+                <h6>POSIX Object Classes (when enabled)</h6>
+                <ul class="list-unstyled">
+                    <li><code>posixAccount</code></li>
+                    <li><code>shadowAccount</code></li>
+                </ul>
+
+                <h6>Required Attributes</h6>
+                <ul class="list-unstyled">
+                    <li><i class="fas fa-check text-success"></i> uid (username)</li>
+                    <li><i class="fas fa-check text-success"></i> cn (common name)</li>
+                    <li><i class="fas fa-check text-success"></i> sn (surname)</li>
+                    <li><i class="fas fa-check text-success"></i> userPassword</li>
+                    <li><i class="fas fa-check text-success"></i> mail (email)</li>
+                </ul>
+
+                <h6>POSIX Attributes (when enabled)</h6>
+                <ul class="list-unstyled">
+                    <li><i class="fas fa-check text-warning"></i> homeDirectory</li>
+                    <li><i class="fas fa-check text-warning"></i> loginShell</li>
+                    <li><i class="fas fa-check text-warning"></i> uidNumber</li>
+                    <li><i class="fas fa-check text-warning"></i> gidNumber</li>
+                </ul>
+
+                <h6>Optional Attributes</h6>
+                <ul class="list-unstyled">
+                    <li><i class="fas fa-circle text-muted"></i> givenName</li>
+                    <li><i class="fas fa-circle text-muted"></i> telephoneNumber</li>
+                    <li><i class="fas fa-circle text-muted"></i> title</li>
+                    <li><i class="fas fa-circle text-muted"></i> description</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

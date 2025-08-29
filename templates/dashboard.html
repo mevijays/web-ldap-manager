@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - LDAP Management Portal{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Dashboard</h1>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-user text-primary"></i> Welcome, {{ username }}!
+                </h5>
+                <p class="card-text">
+                    {% if is_admin %}
+                    You are logged in as an administrator. You have full access to manage LDAP entries.
+                    {% else %}
+                    You are logged in as a regular user. You can manage your profile and change your password.
+                    {% endif %}
+                </p>
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('profile') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-user-edit"></i> Manage Profile
+                    </a>
+                    <a href="{{ url_for('change_password') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-key"></i> Change Password
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if session.is_admin %}
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                {% if session.is_super_admin %}
+                <h5 class="card-title">
+                    <i class="fas fa-crown text-warning"></i> Super Administrator Panel
+                </h5>
+                <p class="card-text">
+                    Full system administrative privileges. Manage LDAP users, groups, and entries.
+                </p>
+                {% else %}
+                <h5 class="card-title">
+                    <i class="fas fa-cogs text-success"></i> Administrator Panel
+                </h5>
+                <p class="card-text">
+                    Administrative privileges with profile management. Manage LDAP users, groups, and entries.
+                </p>
+                {% endif %}
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('admin_users') }}" class="btn btn-outline-success">
+                        <i class="fas fa-users"></i> Manage Users
+                    </a>
+                    <a href="{{ url_for('admin_groups') }}" class="btn btn-outline-info">
+                        <i class="fas fa-layer-group"></i> Manage Groups
+                    </a>
+                    <a href="{{ url_for('admin_panel') }}" class="btn btn-outline-warning">
+                        <i class="fas fa-tools"></i> Admin Tools
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% if is_admin and stats %}
+<!-- LDAP Statistics Section -->
+<div class="row mt-4">
+    <div class="col-12">
+        <h3 class="h4 mb-3">
+            <i class="fas fa-chart-bar text-primary"></i> LDAP Server Statistics
+        </h3>
+    </div>
+</div>
+
+{% if stats.error %}
+<div class="row">
+    <div class="col-12">
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle"></i>
+            <strong>Error loading statistics:</strong> {{ stats.error }}
+        </div>
+    </div>
+</div>
+{% else %}
+
+<!-- Statistics Cards Row 1 -->
+<div class="row mb-3">
+    <div class="col-md-3">
+        <div class="card border-primary">
+            <div class="card-body text-center">
+                <div class="display-6 text-primary">{{ stats.total_users }}</div>
+                <h6 class="card-title">Total Users</h6>
+                <small class="text-muted">All user accounts</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-info">
+            <div class="card-body text-center">
+                <div class="display-6 text-info">{{ stats.total_groups }}</div>
+                <h6 class="card-title">Total Groups</h6>
+                <small class="text-muted">All group entries</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-success">
+            <div class="card-body text-center">
+                <div class="display-6 text-success">{{ stats.posix_users }}</div>
+                <h6 class="card-title">POSIX Users</h6>
+                <small class="text-muted">System access enabled</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-secondary">
+            <div class="card-body text-center">
+                <div class="display-6 text-secondary">{{ stats.standard_users }}</div>
+                <h6 class="card-title">Standard Users</h6>
+                <small class="text-muted">Directory-only accounts</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Cards Row 2 -->
+<div class="row mb-3">
+    <div class="col-md-3">
+        <div class="card border-warning">
+            <div class="card-body text-center">
+                <div class="display-6 text-warning">{{ stats.admin_users }}</div>
+                <h6 class="card-title">Admin Users</h6>
+                <small class="text-muted">Administrative accounts</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-danger">
+            <div class="card-body text-center">
+                <div class="display-6 text-danger">{{ stats.locked_users }}</div>
+                <h6 class="card-title">Locked Users</h6>
+                <small class="text-muted">No shell access</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card border-warning">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-clock text-warning"></i> 
+                    Password Expiry Alerts ({{ stats.expiring_passwords|length }})
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if stats.expiring_passwords %}
+                <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
+                    <table class="table table-sm table-striped">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Full Name</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in stats.expiring_passwords %}
+                            <tr>
+                                <td><code>{{ user.uid }}</code></td>
+                                <td>{{ user.cn }}</td>
+                                <td>
+                                    {% if user.expired %}
+                                    <span class="badge bg-danger">Expired {{ user.days_remaining|abs }}d ago</span>
+                                    {% else %}
+                                    <span class="badge bg-warning">{{ user.days_remaining }}d remaining</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center text-muted">
+                    <i class="fas fa-check-circle text-success"></i>
+                    <p class="mb-0">No passwords expiring within 7 days</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endif %}
+{% endif %}
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-info-circle text-info"></i> System Information
+                </h5>
+                <div class="row">
+                    <div class="col-md-4">
+                        <strong>LDAP Server:</strong><br>
+                        <code>192.168.1.1:389</code>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Base DN:</strong><br>
+                        <code>dc=mylab,dc=lan</code>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>User Type:</strong><br>
+                        <span class="badge bg-{% if is_admin %}success{% else %}primary{% endif %}">
+                            {% if is_admin %}Administrator{% else %}Regular User{% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

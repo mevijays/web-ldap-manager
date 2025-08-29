@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Users - LDAP Management Portal{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="fas fa-users"></i> User Management
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{{ url_for('admin_add_user') }}" class="btn btn-primary">
+                <i class="fas fa-user-plus"></i> Add New User
+            </a>
+            <a href="{{ url_for('admin_bulk_users') }}" class="btn btn-success">
+                <i class="fas fa-upload"></i> Bulk Create Users
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-list"></i> User Accounts
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if users %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Username</th>
+                                <th>Full Name</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th>Account Type</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in users %}
+                            <tr>
+                                <td>
+                                    <strong>{{ user.attributes.get('uid', ['N/A'])[0] }}</strong>
+                                </td>
+                                <td>{{ user.attributes.get('cn', ['N/A'])[0] }}</td>
+                                <td>
+                                    {% if user.attributes.get('mail') %}
+                                        <a href="mailto:{{ user.attributes.get('mail', [''])[0] }}">
+                                            {{ user.attributes.get('mail', ['N/A'])[0] }}
+                                        </a>
+                                    {% else %}
+                                        <span class="text-muted">No email</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ user.attributes.get('telephoneNumber', ['N/A'])[0] }}</td>
+                                <td>
+                                    {% set is_shadow_locked = user.attributes.get('shadowFlag', [''])[0] == '1' %}
+                                    {% set is_shell_locked = user.attributes.get('loginShell', [''])[0] == '/bin/false' %}
+                                    {% set is_desc_locked = 'ACCOUNT_LOCKED' in (user.attributes.get('description', [''])[0] or '') %}
+                                    {% set is_locked = is_shadow_locked or is_shell_locked or is_desc_locked %}
+                                    
+                                    {% if is_locked %}
+                                        <span class="badge bg-danger">
+                                            <i class="fas fa-lock"></i> Locked
+                                        </span>
+                                        {% if user.attributes.get('uidNumber') %}
+                                            <br><small class="text-muted">POSIX Account</small>
+                                        {% endif %}
+                                    {% elif user.attributes.get('uidNumber') %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-server"></i> POSIX Account
+                                        </span>
+                                        <br>
+                                        <small class="text-muted">
+                                            UID: {{ user.attributes.get('uidNumber', ['N/A'])[0] }}
+                                            {% set shell = user.attributes.get('loginShell', [''])[0] %}
+                                            {% if shell == '/sbin/nologin' or shell == '/bin/false' %}
+                                            <span class="badge bg-warning ms-1">No Shell</span>
+                                            {% endif %}
+                                        </small>
+                                    {% else %}
+                                        <span class="badge bg-secondary">
+                                            <i class="fas fa-user"></i> Standard Account
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <a href="{{ url_for('admin_edit_entry', entry_dn=user.dn) }}" 
+                                           class="btn btn-outline-primary">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </a>
+                                        
+                                        {% set is_locked = user.attributes.get('shadowFlag', [''])[0] == '1' or 'ACCOUNT_LOCKED' in (user.attributes.get('description', [''])[0] or '') %}
+                                        
+                                        {% if is_locked %}
+                                            <form method="POST" action="{{ url_for('admin_unlock_user', user_dn=user.dn) }}" style="display: inline;">
+                                                <button type="submit" class="btn btn-outline-success" 
+                                                        onclick="return confirm('Unlock user account?')">
+                                                    <i class="fas fa-unlock"></i> Unlock
+                                                </button>
+                                            </form>
+                                        {% else %}
+                                            <form method="POST" action="{{ url_for('admin_lock_user', user_dn=user.dn) }}" style="display: inline;">
+                                                <button type="submit" class="btn btn-outline-warning" 
+                                                        onclick="return confirm('Lock user account? User will not be able to login.')">
+                                                    <i class="fas fa-lock"></i> Lock
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                        
+                                        <button type="button" class="btn btn-outline-danger" 
+                                                data-user-dn="{{ user.dn }}"
+                                                data-user-name="{{ user.attributes.get('uid', ['Unknown'])[0] }}"
+                                                onclick="confirmDelete(this)">
+                                            <i class="fas fa-trash"></i> Delete
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No Users Found</h5>
+                    <p class="text-muted">No user accounts found in the People organizational unit.</p>
+                    <a href="{{ url_for('admin_add_user') }}" class="btn btn-primary">
+                        <i class="fas fa-user-plus"></i> Create First User
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete confirmation modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Deletion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the user <strong id="deleteUserName"></strong>?</p>
+                <p class="text-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    This action cannot be undone.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger" id="confirmDeleteBtn">
+                        <i class="fas fa-trash"></i> Delete User
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function confirmDelete(button) {
+    const userDn = button.getAttribute('data-user-dn');
+    const userName = button.getAttribute('data-user-name');
+    
+    document.getElementById('deleteUserName').textContent = userName;
+    const form = document.querySelector('#deleteModal form');
+    form.action = '/admin/delete_entry/' + encodeURIComponent(userDn);
+    
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    modal.show();
+}
+</script>
+{% endblock %}

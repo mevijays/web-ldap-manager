@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+
+{% block title %}Add Group - LDAP Management Portal{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="fas fa-plus"></i> Add New Group
+    </h1>
+    <a href="{{ url_for('admin_groups') }}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Back to Groups
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-layer-group"></i> Group Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="group_name" class="form-label">Group Name *</label>
+                        <input type="text" class="form-control" id="group_name" name="group_name" required>
+                        <div class="form-text">Unique identifier for the group (will be used as CN)</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="3" 
+                                  placeholder="Brief description of the group's purpose"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="initial_members" class="form-label">Initial Members</label>
+                        <textarea class="form-control" id="initial_members" name="initial_members" rows="4" 
+                                  placeholder="Enter usernames or full DNs, one per line or comma-separated&#10;Examples:&#10;john.doe&#10;jane.smith&#10;uid=admin,ou=People,dc=mylab,dc=lan"></textarea>
+                        <div class="form-text">
+                            You can enter usernames (will be converted to full DNs) or complete DNs.
+                            Leave empty to create group with admin as the only member.
+                        </div>
+                    </div>
+
+                    <!-- POSIX Group Section -->
+                    <div class="card border-secondary mb-3">
+                        <div class="card-header bg-light">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="enable_posix" name="enable_posix" onchange="togglePosixOptions()">
+                                <label class="form-check-label" for="enable_posix">
+                                    <h6 class="card-title mb-0">
+                                        <i class="fas fa-server"></i> Enable POSIX Group
+                                    </h6>
+                                </label>
+                            </div>
+                            <small class="text-muted">Enable this group for Linux/Unix system access and permissions</small>
+                        </div>
+                        <div class="card-body" id="posix_options" style="display: none;">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="gid_number" class="form-label">GID Number</label>
+                                        <input type="number" class="form-control" id="gid_number" name="gid_number" 
+                                               min="1000" max="65535" placeholder="Auto-generated">
+                                        <div class="form-text">Leave empty for auto-generation (starts from 1000)</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="alert alert-info mb-0">
+                                        <i class="fas fa-info-circle"></i>
+                                        <strong>POSIX Group Features:</strong>
+                                        <ul class="mb-0 mt-2">
+                                            <li>System-level group permissions</li>
+                                            <li>File and directory ownership</li>
+                                            <li>Process group association</li>
+                                            <li>Compatible with Linux/Unix systems</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Note:</strong> The group will be created in: <code>cn=GroupName,ou=Groups,dc=mylab,dc=lan</code><br>
+                        <strong>Standard Object Classes:</strong> <code>groupOfNames</code>, <code>top</code><br>
+                        <strong>POSIX Object Classes:</strong> <code>groupOfNames</code>, <code>posixGroup</code>, <code>top</code>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('admin_groups') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Create Group
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-users"></i> Available Users
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if users %}
+                <p class="text-muted">Available users in the system:</p>
+                <div class="list-group list-group-flush" style="max-height: 300px; overflow-y: auto;">
+                    {% for user in users %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center py-2">
+                        <div>
+                            <strong>{{ user.attributes.get('uid', ['N/A'])[0] }}</strong><br>
+                            <small class="text-muted">{{ user.attributes.get('cn', ['N/A'])[0] }}</small>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary" 
+                                data-username="{{ user.attributes.get('uid', [''])[0] }}"
+                                onclick="addUserToMembers(this.getAttribute('data-username'))">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted">No users found in the system.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle"></i> Group Creation Info
+                </h5>
+            </div>
+            <div class="card-body">
+                <h6>Standard Object Classes</h6>
+                <ul class="list-unstyled">
+                    <li><code>groupOfNames</code></li>
+                    <li><code>top</code></li>
+                </ul>
+
+                <h6>POSIX Object Classes (when enabled)</h6>
+                <ul class="list-unstyled">
+                    <li><code>groupOfNames</code></li>
+                    <li><code>posixGroup</code></li>
+                    <li><code>top</code></li>
+                </ul>
+
+                <h6>Required Attributes</h6>
+                <ul class="list-unstyled">
+                    <li><i class="fas fa-check text-success"></i> cn (group name)</li>
+                    <li><i class="fas fa-check text-success"></i> member (at least one)</li>
+                </ul>
+
+                <h6>POSIX Attributes (when enabled)</h6>
+                <ul class="list-unstyled">
+                    <li><i class="fas fa-check text-warning"></i> gidNumber</li>
+                </ul>
+
+                <h6>Optional Attributes</h6>
+                <ul class="list-unstyled">
+                    <li><i class="fas fa-circle text-muted"></i> description</li>
+                </ul>
+
+                <div class="alert alert-warning mt-3">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <small>
+                        <strong>Note:</strong> groupOfNames requires at least one member. 
+                        If no members are specified, the admin will be added as the initial member.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function addUserToMembers(username) {
+    const textarea = document.getElementById('initial_members');
+    const currentValue = textarea.value.trim();
+    
+    if (currentValue) {
+        textarea.value = currentValue + '\n' + username;
+    } else {
+        textarea.value = username;
+    }
+    
+    // Scroll to bottom of textarea
+    textarea.scrollTop = textarea.scrollHeight;
+}
+
+function togglePosixOptions() {
+    const checkbox = document.getElementById('enable_posix');
+    const options = document.getElementById('posix_options');
+    
+    if (checkbox.checked) {
+        options.style.display = 'block';
+    } else {
+        options.style.display = 'none';
+        // Clear GID number when disabled
+        document.getElementById('gid_number').value = '';
+    }
+}
+</script>
+{% endblock %}

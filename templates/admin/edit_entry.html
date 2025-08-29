@@ -1,0 +1,509 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Entry - LDAP Management Portal{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="fas fa-edit"></i> Edit LDAP Entry
+    </h1>
+    <a href="{{ url_for('admin_panel') }}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Back to Admin Panel
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-edit"></i> Entry Attributes
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('admin_update_entry') }}" enctype="multipart/form-data">
+                    <input type="hidden" name="entry_dn" value="{{ entry_data.dn }}">
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Entry DN:</strong> <code>{{ entry_data.dn }}</code>
+                    </div>
+
+                    {% if entry_data.attributes %}
+                    {% for attr_name, attr_values in entry_data.attributes.items() %}
+                    {% if attr_name not in ['objectClass', 'entryUUID', 'entryCSN', 'modifyTimestamp', 'createTimestamp'] %}
+                    <div class="mb-3">
+                        <label for="{{ attr_name }}" class="form-label">
+                            {{ attr_name }}
+                            {% if attr_name == 'userPassword' %}
+                                <span class="badge bg-warning">Sensitive</span>
+                            {% endif %}
+                        </label>
+                        
+                        {% if attr_name == 'userPassword' %}
+                            <input type="password" class="form-control" id="{{ attr_name }}" name="{{ attr_name }}" 
+                                   placeholder="Leave empty to keep current password">
+                            <div class="form-text">Enter new password or leave empty to keep current password</div>
+                        {% elif attr_name == 'jpegPhoto' %}
+                            <!-- Photo Display and Upload -->
+                            <div class="mb-3">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="text-center">
+                                            <div class="profile-photo-preview mb-3">
+                                                <img src="{{ url_for('user_photo', username=entry_data.attributes.get('uid', [''])[0]) }}" 
+                                                     alt="Profile Photo" class="profile-img-preview"
+                                                     onerror="this.onerror=null; this.src='{{ url_for('static', filename='img/default-avatar.png') }}';">
+                                            </div>
+                                            <div class="btn-group" role="group">
+                                                <button type="button" class="btn btn-outline-primary btn-sm" 
+                                                        onclick="document.getElementById('photoUpload').click()">
+                                                    <i class="fas fa-upload"></i> Update
+                                                </button>
+                                                <button type="button" class="btn btn-outline-danger btn-sm"
+                                                        onclick="removePhoto('{{ entry_data.attributes.get('uid', [''])[0] }}')">
+                                                    <i class="fas fa-trash"></i> Remove
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <input type="file" id="photoUpload" name="jpegPhoto" 
+                                               class="form-control" accept="image/*" style="display: none;"
+                                               onchange="previewPhoto(this)">
+                                        <div class="form-text">
+                                            <strong>Photo Management:</strong><br>
+                                            • Supported formats: JPEG, PNG, GIF, WebP<br>
+                                            • Maximum size: 2MB<br>
+                                            • Image will be automatically resized to 200x200 pixels<br>
+                                            • Leave empty to keep current photo
+                                        </div>
+                                        <div id="photoPreview" class="mt-2" style="display: none;">
+                                            <small class="text-success">
+                                                <i class="fas fa-check"></i> New photo selected. Click "Update Entry" to save.
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% elif attr_name == 'description' %}
+                            <textarea class="form-control" id="{{ attr_name }}" name="{{ attr_name }}" rows="3">{{ attr_values[0] if attr_values else '' }}</textarea>
+                        {% elif attr_name in ['uid', 'cn'] %}
+                            <input type="text" class="form-control" id="{{ attr_name }}" name="{{ attr_name }}" 
+                                   value="{{ attr_values[0] if attr_values else '' }}" readonly>
+                            <div class="form-text">This field cannot be modified</div>
+                        {% elif attr_name.startswith('shadow') %}
+                            <!-- Shadow attributes only for POSIX users -->
+                            {% if 'posixAccount' in entry_data.attributes.get('objectClass', []) %}
+                                {% if attr_name == 'shadowExpire' %}
+                                    {% set shadow_expire_days = attr_values[0]|int if attr_values and attr_values[0] else 0 %}
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <input type="number" class="form-control" id="{{ attr_name }}" name="{{ attr_name }}" 
+                                                   value="{{ attr_values[0] if attr_values else '' }}" placeholder="Days since Unix epoch">
+                                            <div class="form-text">Unix days format</div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            {% if shadow_expire_days > 0 %}
+                                            {% set expire_date = shadow_expire_days|timestamp %}
+                                            <input type="date" class="form-control" id="{{ attr_name }}_date" 
+                                                   value="{{ expire_date.strftime('%Y-%m-%d') }}"
+                                                   onchange="updateShadowDays('{{ attr_name }}', this.value)">
+                                            {% else %}
+                                            <input type="date" class="form-control" id="{{ attr_name }}_date" 
+                                                   onchange="updateShadowDays('{{ attr_name }}', this.value)">
+                                            {% endif %}
+                                            <div class="form-text">Human-readable date</div>
+                                        </div>
+                                    </div>
+                                    {% if shadow_expire_days > 0 %}
+                                    {% set current_days = unix_days_from_epoch() %}
+                                    {% set days_remaining = shadow_expire_days - current_days %}
+                                    <small class="text-muted">
+                                        Current expiry: {{ shadow_expire_days|timestamp|strftime('%B %d, %Y') }}
+                                        ({{ days_remaining }} days {% if days_remaining < 0 %}ago{% else %}remaining{% endif %})
+                                    </small>
+                                    {% endif %}
+                                {% elif attr_name == 'shadowLastChange' %}
+                                    {% set shadow_change_days = attr_values[0]|int if attr_values and attr_values[0] else 0 %}
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <input type="number" class="form-control" id="{{ attr_name }}" name="{{ attr_name }}" 
+                                                   value="{{ attr_values[0] if attr_values else '' }}" placeholder="Days since Unix epoch">
+                                            <div class="form-text">Unix days format</div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            {% if shadow_change_days > 0 %}
+                                            {% set change_date = shadow_change_days|timestamp %}
+                                            <input type="date" class="form-control" id="{{ attr_name }}_date" 
+                                                   value="{{ change_date.strftime('%Y-%m-%d') }}"
+                                                   onchange="updateShadowDays('{{ attr_name }}', this.value)">
+                                            {% else %}
+                                            <input type="date" class="form-control" id="{{ attr_name }}_date" 
+                                                   onchange="updateShadowDays('{{ attr_name }}', this.value)">
+                                            {% endif %}
+                                            <div class="form-text">Human-readable date</div>
+                                        </div>
+                                    </div>
+                                    {% if shadow_change_days > 0 %}
+                                    {% set current_days = unix_days_from_epoch() %}
+                                    {% set days_ago = current_days - shadow_change_days %}
+                                    <small class="text-muted">
+                                        Last changed: {{ shadow_change_days|timestamp|strftime('%B %d, %Y') }}
+                                        ({{ days_ago }} days ago)
+                                    </small>
+                                    {% endif %}
+                                {% elif attr_name == 'shadowMax' %}
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" id="{{ attr_name }}" name="{{ attr_name }}" 
+                                               value="{{ attr_values[0] if attr_values else '90' }}" min="1" max="999">
+                                        <span class="input-group-text">days</span>
+                                    </div>
+                                    <div class="form-text">Maximum password age in days (default: 90)</div>
+                                {% else %}
+                                    <!-- Other shadow attributes -->
+                                    <input type="text" class="form-control" id="{{ attr_name }}" name="{{ attr_name }}" 
+                                           value="{{ attr_values[0] if attr_values else '' }}">
+                                    <div class="form-text">Shadow attribute (POSIX only)</div>
+                                {% endif %}
+                            {% else %}
+                                <!-- Show information for non-POSIX users -->
+                                <div class="alert alert-info py-2">
+                                    <i class="fas fa-info-circle"></i> 
+                                    <strong>{{ attr_name }}</strong>: This shadow password attribute is not available for standard users. 
+                                    Only POSIX users support shadow password management.
+                                </div>
+                            {% endif %}
+                        {% else %}
+                            <input type="{% if attr_name == 'mail' %}email{% elif attr_name == 'telephoneNumber' %}tel{% else %}text{% endif %}" 
+                                   class="form-control" id="{{ attr_name }}" name="{{ attr_name }}" 
+                                   value="{{ attr_values[0] if attr_values else '' }}">
+                        {% endif %}
+                        
+                        {% if attr_values|length > 1 %}
+                        <div class="form-text">
+                            <strong>Multiple values:</strong>
+                            {% for value in attr_values %}
+                                <code>{{ value }}</code>{% if not loop.last %}, {% endif %}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                    {% endif %}
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('admin_panel') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Update Entry
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle"></i> Entry Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <h6>Object Classes</h6>
+                {% if entry_data.attributes and entry_data.attributes.get('objectClass') %}
+                <ul class="list-unstyled">
+                    {% for obj_class in entry_data.attributes.get('objectClass', []) %}
+                    <li><code>{{ obj_class }}</code></li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-muted">No object classes found</p>
+                {% endif %}
+
+                <h6 class="mt-3">Modification Note</h6>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <small>
+                        Some attributes like <code>uid</code> and <code>cn</code> may be read-only 
+                        depending on the LDAP schema configuration.
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Account Management Section for User Entries -->
+        {% if 'ou=People' in entry_data.dn %}
+        <div class="card mt-3">
+            <div class="card-header bg-info text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-user-cog"></i> Account Management
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <!-- Password Expiry - Only for POSIX Users -->
+                    {% if 'posixAccount' in entry_data.attributes.get('objectClass', []) %}
+                    <div class="col-md-6">
+                        <h6>Password Expiry <span class="badge bg-secondary">POSIX User</span></h6>
+                        <form method="POST" action="{{ url_for('admin_set_password_expiry', user_dn=entry_data.dn) }}" style="display: inline;">
+                            <div class="input-group">
+                                <input type="number" class="form-control" name="expiry_days" value="90" min="1" max="9999" required>
+                                <button type="submit" class="btn btn-outline-primary">
+                                    <i class="fas fa-calendar-alt"></i> Set Expiry
+                                </button>
+                            </div>
+                            <div class="form-text">Set password expiry in days from now</div>
+                        </form>
+                    </div>
+                    {% else %}
+                    <div class="col-md-6">
+                        <h6>Password Expiry <span class="badge bg-light text-dark">Standard User</span></h6>
+                        <div class="alert alert-info py-2 mb-2">
+                            <i class="fas fa-info-circle"></i> Password expiry is not available for standard users. 
+                            Only POSIX users support shadow password management.
+                        </div>
+                    </div>
+                    {% endif %}
+                    <div class="col-md-6">
+                        <h6>Account Status</h6>
+                        {% set is_locked = entry_data.attributes.get('shadowFlag', [''])[0] == '1' or 'ACCOUNT_LOCKED' in (entry_data.attributes.get('description', [''])[0] or '') %}
+                        
+                        {% if is_locked %}
+                            <div class="alert alert-warning py-2">
+                                <i class="fas fa-lock"></i> Account is currently locked
+                            </div>
+                            <form method="POST" action="{{ url_for('admin_unlock_user', user_dn=entry_data.dn) }}" style="display: inline;">
+                                <button type="submit" class="btn btn-success" onclick="return confirm('Unlock user account?')">
+                                    <i class="fas fa-unlock"></i> Unlock Account
+                                </button>
+                            </form>
+                        {% else %}
+                            <div class="alert alert-success py-2">
+                                <i class="fas fa-unlock"></i> Account is active
+                            </div>
+                            <form method="POST" action="{{ url_for('admin_lock_user', user_dn=entry_data.dn) }}" style="display: inline;">
+                                <button type="submit" class="btn btn-warning" onclick="return confirm('Lock user account? User will not be able to login.')">
+                                    <i class="fas fa-lock"></i> Lock Account
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Display current shadow attributes if they exist -->
+                {% if entry_data.attributes.get('shadowExpire') or entry_data.attributes.get('shadowLastChange') or entry_data.attributes.get('shadowMax') %}
+                <div class="mt-3">
+                    <h6>Password Management Info</h6>
+                    {% if entry_data.attributes.get('shadowExpire') %}
+                    {% set expire_days = entry_data.attributes.get('shadowExpire', [''])[0]|int %}
+                    {% set current_days = unix_days_from_epoch() %}
+                    {% set days_until_expire = expire_days - current_days %}
+                    <div class="mb-2">
+                        <small class="text-muted">Password Expires:</small><br>
+                        <span class="badge {% if days_until_expire < 0 %}bg-danger{% elif days_until_expire <= 7 %}bg-warning{% else %}bg-success{% endif %}">
+                            {% if days_until_expire < 0 %}
+                                Expired {{ days_until_expire|abs }} days ago
+                            {% else %}
+                                {{ days_until_expire }} days remaining
+                            {% endif %}
+                        </span>
+                        <br><small class="text-muted">Expire date: {{ expire_days|timestamp|strftime('%B %d, %Y') }}</small>
+                        <br><small class="text-muted">Unix day: {{ expire_days }}</small>
+                    </div>
+                    {% endif %}
+                    
+                    {% if entry_data.attributes.get('shadowLastChange') %}
+                    {% set change_days = entry_data.attributes.get('shadowLastChange', [''])[0]|int %}
+                    {% set current_days = unix_days_from_epoch() %}
+                    {% set days_since_change = current_days - change_days %}
+                    <div class="mb-2">
+                        <small class="text-muted">Last Password Change:</small><br>
+                        <span class="badge bg-secondary">{{ days_since_change }} days ago</span>
+                        <br><small class="text-muted">Change date: {{ change_days|timestamp|strftime('%B %d, %Y') }}</small>
+                        <br><small class="text-muted">Unix day: {{ change_days }}</small>
+                    </div>
+                    {% endif %}
+                    
+                    {% if entry_data.attributes.get('shadowMax') %}
+                    <div class="mb-2">
+                        <small class="text-muted">Max Password Age:</small><br>
+                        <span class="badge bg-info">{{ entry_data.attributes.get('shadowMax', ['N/A'])[0] }} days</span>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="card mt-3">
+            <div class="card-header bg-danger text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-trash"></i> Danger Zone
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Delete this LDAP entry permanently.</p>
+                <button type="button" class="btn btn-outline-danger"
+                        data-entry-dn="{{ entry_data.dn }}"
+                        onclick="confirmDelete(this)">
+                    <i class="fas fa-trash"></i> Delete Entry
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete confirmation modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Deletion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this LDAP entry?</p>
+                <p><strong>DN:</strong> <code id="deleteEntryDn"></code></p>
+                <p class="text-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    This action cannot be undone.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> Delete Entry
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Convert date to Unix days since epoch (1970-01-01)
+function updateShadowDays(fieldName, dateValue) {
+    if (!dateValue) return;
+    
+    const selectedDate = new Date(dateValue);
+    const unixEpoch = new Date('1970-01-01');
+    const daysDiff = Math.floor((selectedDate - unixEpoch) / (1000 * 60 * 60 * 24));
+    
+    document.getElementById(fieldName).value = daysDiff;
+}
+
+// Initialize date fields on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Update date fields when Unix days are changed
+    const shadowFields = ['shadowExpire', 'shadowLastChange'];
+    
+    shadowFields.forEach(function(fieldName) {
+        const unixField = document.getElementById(fieldName);
+        const dateField = document.getElementById(fieldName + '_date');
+        
+        if (unixField && dateField) {
+            unixField.addEventListener('input', function() {
+                const days = parseInt(this.value);
+                if (days && days > 0) {
+                    // Convert Unix days to actual date
+                    const unixEpoch = new Date('1970-01-01');
+                    const targetDate = new Date(unixEpoch.getTime() + (days * 24 * 60 * 60 * 1000));
+                    dateField.value = targetDate.toISOString().split('T')[0];
+                } else {
+                    dateField.value = '';
+                }
+            });
+        }
+    });
+});
+
+// Photo management functions
+function previewPhoto(input) {
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        
+        // Validate file size (2MB limit)
+        if (file.size > 2 * 1024 * 1024) {
+            alert('File size must be less than 2MB');
+            input.value = '';
+            return;
+        }
+        
+        // Show preview message
+        const preview = document.getElementById('photoPreview');
+        if (preview) {
+            preview.style.display = 'block';
+        }
+        
+        // Optional: Show actual image preview
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const currentImg = document.querySelector('.profile-img-preview');
+            if (currentImg) {
+                currentImg.src = e.target.result;
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function removePhoto(username) {
+    if (confirm('Are you sure you want to remove this user\'s profile photo?')) {
+        // Create a form to submit photo removal
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/admin/remove_photo/' + encodeURIComponent(username);
+        
+        // Add CSRF token if available
+        const csrfToken = document.querySelector('input[name="csrf_token"]');
+        if (csrfToken) {
+            const tokenInput = document.createElement('input');
+            tokenInput.type = 'hidden';
+            tokenInput.name = 'csrf_token';
+            tokenInput.value = csrfToken.value;
+            form.appendChild(tokenInput);
+        }
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function confirmDelete(button) {
+    const entryDn = button.getAttribute('data-entry-dn');
+    
+    document.getElementById('deleteEntryDn').textContent = entryDn;
+    const form = document.querySelector('#deleteModal form');
+    form.action = '/admin/delete_entry/' + encodeURIComponent(entryDn);
+    
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    modal.show();
+}
+</script>
+
+<style>
+.profile-photo-preview {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3px solid #dee2e6;
+    margin: 0 auto;
+}
+
+.profile-img-preview {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+</style>
+{% endblock %}

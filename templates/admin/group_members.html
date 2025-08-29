@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+
+{% block title %}Group Members - LDAP Management Portal{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="fas fa-users"></i> Group Members: {{ group_data.attributes.get('cn', ['Unknown'])[0] }}
+    </h1>
+    <a href="{{ url_for('admin_groups') }}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Back to Groups
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-list"></i> Current Members
+                </h5>
+                <span class="badge bg-primary">{{ member_details|length }} members</span>
+            </div>
+            <div class="card-body">
+                {% if member_details %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Username</th>
+                                <th>Full Name</th>
+                                <th>Email</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for member in member_details %}
+                            <tr>
+                                <td>
+                                    <strong>{{ member.attributes.get('uid', ['N/A'])[0] }}</strong>
+                                </td>
+                                <td>{{ member.attributes.get('cn', ['N/A'])[0] }}</td>
+                                <td>
+                                    {% if member.attributes.get('mail') %}
+                                        <a href="mailto:{{ member.attributes.get('mail', [''])[0] }}">
+                                            {{ member.attributes.get('mail', ['N/A'])[0] }}
+                                        </a>
+                                    {% else %}
+                                        <span class="text-muted">No email</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            data-member-dn="{{ member.dn }}"
+                                            data-member-name="{{ member.attributes.get('uid', ['Unknown'])[0] }}"
+                                            onclick="confirmRemoveMember(this)">
+                                        <i class="fas fa-user-minus"></i> Remove
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No Members</h5>
+                    <p class="text-muted">This group has no members yet.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-user-plus"></i> Add Member
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('admin_add_group_member') }}">
+                    <input type="hidden" name="group_dn" value="{{ group_data.dn }}">
+                    
+                    <div class="mb-3">
+                        <label for="member_dn" class="form-label">User to Add</label>
+                        <select class="form-select" id="member_dn" name="member_dn" required>
+                            <option value="">Select a user...</option>
+                            {% for user in users %}
+                            {% set user_dn = user.dn %}
+                            {% set is_member = user_dn in (group_data.attributes.get('member', [])) %}
+                            {% if not is_member %}
+                            <option value="{{ user.attributes.get('uid', [''])[0] }}">
+                                {{ user.attributes.get('uid', ['N/A'])[0] }} - {{ user.attributes.get('cn', ['N/A'])[0] }}
+                            </option>
+                            {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="custom_member_dn" class="form-label">Or enter custom DN</label>
+                        <input type="text" class="form-control" id="custom_member_dn" 
+                               placeholder="uid=username,ou=People,dc=mylab,dc=lan">
+                        <div class="form-text">Leave dropdown empty to use custom DN</div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-user-plus"></i> Add to Group
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle"></i> Group Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tr>
+                        <td><strong>Group Name:</strong></td>
+                        <td>{{ group_data.attributes.get('cn', ['N/A'])[0] }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Description:</strong></td>
+                        <td>{{ group_data.attributes.get('description', ['No description'])[0] }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Member Count:</strong></td>
+                        <td>{{ member_details|length }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>DN:</strong></td>
+                        <td><small><code>{{ group_data.dn }}</code></small></td>
+                    </tr>
+                </table>
+
+                <div class="d-grid gap-2 mt-3">
+                    <a href="{{ url_for('admin_edit_entry', entry_dn=group_data.dn) }}" 
+                       class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-edit"></i> Edit Group
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Remove member confirmation modal -->
+<div class="modal fade" id="removeMemberModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Remove Member</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to remove <strong id="removeMemberName"></strong> from this group?</p>
+                <p class="text-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    The user will lose any permissions granted through this group membership.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="POST" action="{{ url_for('admin_remove_group_member') }}" style="display: inline;">
+                    <input type="hidden" name="group_dn" value="{{ group_data.dn }}">
+                    <input type="hidden" name="member_dn" id="removeMemberDn">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-user-minus"></i> Remove Member
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function confirmRemoveMember(button) {
+    const memberDn = button.getAttribute('data-member-dn');
+    const memberName = button.getAttribute('data-member-name');
+    
+    document.getElementById('removeMemberName').textContent = memberName;
+    document.getElementById('removeMemberDn').value = memberDn;
+    
+    const modal = new bootstrap.Modal(document.getElementById('removeMemberModal'));
+    modal.show();
+}
+
+// Handle custom DN input
+document.getElementById('custom_member_dn').addEventListener('input', function() {
+    const customDn = this.value.trim();
+    const dropdown = document.getElementById('member_dn');
+    
+    if (customDn) {
+        dropdown.value = '';
+        dropdown.disabled = true;
+        // Set the custom DN as the value for the hidden field
+        dropdown.name = '';
+        this.name = 'member_dn';
+    } else {
+        dropdown.disabled = false;
+        dropdown.name = 'member_dn';
+        this.name = '';
+    }
+});
+</script>
+{% endblock %}

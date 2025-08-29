@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}Bulk User Creation - LDAP Management Portal{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="fas fa-users"></i> Bulk User Creation
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{{ url_for('admin_download_sample_csv') }}" class="btn btn-outline-success">
+                <i class="fas fa-download"></i> Download Sample CSV
+            </a>
+        </div>
+        <div class="btn-group">
+            <a href="{{ url_for('admin_users') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Users
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Instructions Card -->
+<div class="card mb-4">
+    <div class="card-header bg-info text-white">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-info-circle"></i> Instructions
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Required CSV Columns:</h6>
+                <ul class="list-unstyled">
+                    <li><i class="fas fa-check text-success"></i> <strong>username</strong> - Unique username (e.g., john.doe)</li>
+                    <li><i class="fas fa-check text-success"></i> <strong>password</strong> - Initial password</li>
+                    <li><i class="fas fa-check text-success"></i> <strong>first_name</strong> - User's first name</li>
+                    <li><i class="fas fa-check text-success"></i> <strong>last_name</strong> - User's last name</li>
+                    <li><i class="fas fa-check text-success"></i> <strong>email</strong> - Valid email address</li>
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <h6>Optional CSV Columns:</h6>
+                <ul class="list-unstyled">
+                    <li><i class="fas fa-plus text-primary"></i> <strong>phone</strong> - Phone number</li>
+                    <li><i class="fas fa-plus text-primary"></i> <strong>department</strong> - Department name</li>
+                    <li><i class="fas fa-plus text-primary"></i> <strong>title</strong> - Job title</li>
+                    <li><i class="fas fa-plus text-primary"></i> <strong>posix_enabled</strong> - yes/no for POSIX account</li>
+                    <li><i class="fas fa-plus text-primary"></i> <strong>login_shell</strong> - Shell for POSIX users (default: /bin/bash)</li>
+                    <li><i class="fas fa-plus text-primary"></i> <strong>home_directory</strong> - Home dir for POSIX users (default: /home/username)</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="alert alert-warning mt-3">
+            <i class="fas fa-exclamation-triangle"></i>
+            <strong>Important Notes:</strong>
+            <ul class="mb-0 mt-2">
+                <li>CSV file must have headers matching the column names above</li>
+                <li>Usernames must be unique - existing users will be skipped</li>
+                <li>Passwords should meet your organization's security requirements</li>
+                <li>POSIX users get system access with UID/GID assignment</li>
+                <li>Standard users get basic LDAP authentication only</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Form Card -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-upload"></i> Upload CSV File
+        </h5>
+    </div>
+    <div class="card-body">
+        <form method="POST" enctype="multipart/form-data" id="bulkUserForm">
+            <div class="mb-4">
+                <label for="csv_file" class="form-label">Select CSV File</label>
+                <input type="file" class="form-control" id="csv_file" name="csv_file" accept=".csv" required>
+                <div class="form-text">
+                    <i class="fas fa-file-csv"></i> Only CSV files are accepted. Maximum file size: 10MB
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="confirmBulkCreate" required>
+                    <label class="form-check-label" for="confirmBulkCreate">
+                        <strong>I understand that this will create multiple users at once and cannot be easily undone.</strong>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="d-grid gap-2 d-md-flex justify-content-md-start">
+                <button type="submit" class="btn btn-primary btn-lg" id="submitBtn" disabled>
+                    <i class="fas fa-users"></i> Create Users from CSV
+                </button>
+                <a href="{{ url_for('admin_users') }}" class="btn btn-secondary btn-lg">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Sample Data Preview -->
+<div class="card mt-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-eye"></i> Sample CSV Format
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered">
+                <thead class="table-light">
+                    <tr>
+                        <th>username</th>
+                        <th>password</th>
+                        <th>first_name</th>
+                        <th>last_name</th>
+                        <th>email</th>
+                        <th>phone</th>
+                        <th>department</th>
+                        <th>title</th>
+                        <th>posix_enabled</th>
+                        <th>login_shell</th>
+                        <th>home_directory</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>john.doe</code></td>
+                        <td><code>TempPass123!</code></td>
+                        <td><code>John</code></td>
+                        <td><code>Doe</code></td>
+                        <td><code>john.doe@company.com</code></td>
+                        <td><code>555-1234</code></td>
+                        <td><code>Engineering</code></td>
+                        <td><code>Software Developer</code></td>
+                        <td><code>yes</code></td>
+                        <td><code>/bin/bash</code></td>
+                        <td><code>/home/john.doe</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>jane.smith</code></td>
+                        <td><code>TempPass456!</code></td>
+                        <td><code>Jane</code></td>
+                        <td><code>Smith</code></td>
+                        <td><code>jane.smith@company.com</code></td>
+                        <td><code>555-5678</code></td>
+                        <td><code>Marketing</code></td>
+                        <td><code>Marketing Manager</code></td>
+                        <td><code>no</code></td>
+                        <td><code></code></td>
+                        <td><code></code></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="alert alert-info">
+            <i class="fas fa-lightbulb"></i>
+            <strong>Tip:</strong> Download the sample CSV file using the button above to get started quickly!
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const checkbox = document.getElementById('confirmBulkCreate');
+    const submitBtn = document.getElementById('submitBtn');
+    const form = document.getElementById('bulkUserForm');
+    
+    // Enable/disable submit button based on checkbox
+    checkbox.addEventListener('change', function() {
+        submitBtn.disabled = !this.checked;
+    });
+    
+    // Add loading state on form submit
+    form.addEventListener('submit', function() {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing CSV...';
+    });
+    
+    // File validation
+    const fileInput = document.getElementById('csv_file');
+    fileInput.addEventListener('change', function() {
+        const file = this.files[0];
+        if (file) {
+            // Check file size (10MB limit)
+            if (file.size > 10 * 1024 * 1024) {
+                alert('File size too large. Maximum size is 10MB.');
+                this.value = '';
+                return;
+            }
+            
+            // Check file extension
+            if (!file.name.toLowerCase().endsWith('.csv')) {
+                alert('Please select a CSV file.');
+                this.value = '';
+                return;
+            }
+        }
+    });
+});
+</script>
+
+{% endblock %}

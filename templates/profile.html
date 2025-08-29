@@ -1,0 +1,378 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - LDAP Management Portal{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">My Profile</h1>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-camera"></i> Profile Photo
+                </h5>
+            </div>
+            <div class="card-body text-center">
+                <div class="profile-photo-large mb-3 mx-auto">
+                    <img src="{{ url_for('user_photo', username=session.username) }}" 
+                         alt="Profile Photo" class="profile-img-large"
+                         onerror="this.onerror=null; this.src='{{ url_for('static', filename='img/default-avatar.png') }}';">
+                </div>
+                
+                {% if not session.is_super_admin %}
+                <form action="{{ url_for('upload_photo') }}" method="post" enctype="multipart/form-data" class="mb-3">
+                    <div class="mb-3">
+                        <input type="file" class="form-control" name="photo" accept="image/*" required>
+                        <div class="form-text">
+                            Supported formats: JPEG, PNG, GIF, WebP<br>
+                            Maximum size: 2MB (will be resized to 200x200)
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="fas fa-upload"></i> Upload Photo
+                    </button>
+                </form>
+                
+                <form action="{{ url_for('delete_photo') }}" method="post" class="d-inline">
+                    <button type="submit" class="btn btn-outline-danger btn-sm" 
+                            onclick="return confirm('Are you sure you want to delete your profile photo?')">
+                        <i class="fas fa-trash"></i> Remove Photo
+                    </button>
+                </form>
+                {% else %}
+                <p class="text-muted">Photo upload not available for super admin accounts</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Account Information Card -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle"></i> Account Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tr>
+                        <td><strong>Username:</strong></td>
+                        <td>{{ user_data.attributes.get('uid', ['N/A'])[0] }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Full Name:</strong></td>
+                        <td>{{ user_data.attributes.get('cn', ['N/A'])[0] }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>First Name:</strong></td>
+                        <td>{{ user_data.attributes.get('givenName', ['N/A'])[0] }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Last Name:</strong></td>
+                        <td>{{ user_data.attributes.get('sn', ['N/A'])[0] }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>DN:</strong></td>
+                        <td><small><code>{{ user_data.dn }}</code></small></td>
+                    </tr>
+                    {% if user_data.attributes.get('uidNumber') %}
+                    <tr>
+                        <td><strong>UID Number:</strong></td>
+                        <td><code>{{ user_data.attributes.get('uidNumber', ['N/A'])[0] }}</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>GID Number:</strong></td>
+                        <td><code>{{ user_data.attributes.get('gidNumber', ['N/A'])[0] }}</code></td>
+                    </tr>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+
+        <!-- POSIX Account Info Card -->
+        {% if user_data.attributes.get('uidNumber') %}
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-server"></i> POSIX Account Info
+                </h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tr>
+                        <td><strong>Home Directory:</strong></td>
+                        <td><code>{{ user_data.attributes.get('homeDirectory', ['N/A'])[0] }}</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Login Shell:</strong></td>
+                        <td><code>{{ user_data.attributes.get('loginShell', ['N/A'])[0] }}</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Account Status:</strong></td>
+                        <td>
+                            {% set shell = user_data.attributes.get('loginShell', [''])[0] %}
+                            {% if shell == '/sbin/nologin' or shell == '/bin/false' %}
+                            <span class="badge bg-warning">No Shell Access</span>
+                            {% else %}
+                            <span class="badge bg-success">Shell Access Enabled</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% if password_info %}
+                    <tr>
+                        <td><strong>Password Status:</strong></td>
+                        <td>
+                            {% if password_info.password_expired %}
+                            <span class="badge bg-danger">Expired {{ password_info.days_until_expire|abs }}d ago</span>
+                            {% elif password_info.password_expires_soon %}
+                            <span class="badge bg-warning">Expires in {{ password_info.days_until_expire }}d</span>
+                            {% else %}
+                            <span class="badge bg-success">{{ password_info.days_until_expire }}d remaining</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Security Card -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-key"></i> Security
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if session.is_super_admin %}
+                <p class="text-muted">Super admin password can be changed, but use caution.</p>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Caution:</strong> Super admin password changes through web interface should be done carefully. 
+                    Consider using <code>ldappasswd</code> for safer password management.
+                </div>
+                <a href="{{ url_for('change_password') }}" class="btn btn-outline-warning">
+                    <i class="fas fa-key"></i> Change Super Admin Password
+                </a>
+                {% elif session.is_admin %}
+                <p class="text-muted">Administrator password management.</p>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Administrator:</strong> You can change your password safely through this interface.
+                </div>
+                <a href="{{ url_for('change_password') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-key"></i> Change Password
+                </a>
+                {% else %}
+                <p class="text-muted">Keep your account secure by regularly updating your password.</p>
+                <a href="{{ url_for('change_password') }}" class="btn btn-outline-warning">
+                    <i class="fas fa-key"></i> Change Password
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-user-edit"></i> Edit Profile Information
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if session.is_super_admin %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Super Administrator Account:</strong> Profile updates are not available for the super admin account. 
+                    This is a system account with fixed attributes.
+                </div>
+                {% elif session.is_admin %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Administrator Account:</strong> You have administrative privileges and can also update your own profile.
+                </div>
+                {% endif %}
+                
+                <form method="POST" action="{{ url_for('update_profile') }}">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="cn" class="form-label">Full Name (Common Name)</label>
+                                <input type="text" class="form-control" id="cn" name="cn" 
+                                       value="{{ user_data.attributes.get('cn', [''])[0] }}"
+                                       {% if session.is_super_admin %}readonly{% endif %}>
+                                <div class="form-text">Your complete name as it appears in the directory</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="displayName" class="form-label">Display Name</label>
+                                <input type="text" class="form-control" id="displayName" name="displayName" 
+                                       value="{{ user_data.attributes.get('displayName', [''])[0] }}"
+                                       {% if session.is_super_admin %}readonly{% endif %}>
+                                <div class="form-text">Name shown in applications and directories</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="mail" class="form-label">Email Address</label>
+                                <input type="email" class="form-control" id="mail" name="mail" 
+                                       value="{{ user_data.attributes.get('mail', [''])[0] }}"
+                                       {% if session.is_super_admin %}readonly{% endif %}>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="telephoneNumber" class="form-label">Phone Number</label>
+                                <input type="tel" class="form-control" id="telephoneNumber" name="telephoneNumber" 
+                                       value="{{ user_data.attributes.get('telephoneNumber', [''])[0] }}"
+                                       {% if session.is_super_admin %}readonly{% endif %}>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="mobile" class="form-label">Mobile Number</label>
+                                <input type="tel" class="form-control" id="mobile" name="mobile" 
+                                       value="{{ user_data.attributes.get('mobile', [''])[0] }}"
+                                       {% if session.is_super_admin %}readonly{% endif %}>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="title" class="form-label">Job Title</label>
+                                <input type="text" class="form-control" id="title" name="title" 
+                                       value="{{ user_data.attributes.get('title', [''])[0] }}"
+                                       {% if session.is_super_admin %}readonly{% endif %}>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="department" class="form-label">Department</label>
+                                <input type="text" class="form-control" id="department" name="department" 
+                                       value="{{ user_data.attributes.get('department', [''])[0] }}"
+                                       {% if session.is_super_admin %}readonly{% endif %}>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="o" class="form-label">Organization</label>
+                                <input type="text" class="form-control" id="o" name="o" 
+                                       value="{{ user_data.attributes.get('o', [''])[0] }}"
+                                       {% if session.is_super_admin %}readonly{% endif %}>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="3"
+                                  {% if session.is_super_admin %}readonly{% endif %}>{{ user_data.attributes.get('description', [''])[0] }}</textarea>
+                        <div class="form-text">Brief description about yourself or your role</div>
+                    </div>
+
+                    <!-- POSIX Account Section -->
+                    {% if user_data.attributes.get('homeDirectory') or user_data.attributes.get('loginShell') or user_data.attributes.get('uidNumber') %}
+                    <div class="card border-info mb-3">
+                        <div class="card-header bg-light">
+                            <h6 class="card-title mb-0">
+                                <i class="fas fa-server"></i> POSIX Account (System Access)
+                            </h6>
+                            <small class="text-muted">Linux/Unix system access configuration</small>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="homeDirectory" class="form-label">Home Directory</label>
+                                        <input type="text" class="form-control" id="homeDirectory" name="homeDirectory" 
+                                               value="{{ user_data.attributes.get('homeDirectory', [''])[0] }}"
+                                               readonly>
+                                        <div class="form-text">System-assigned home directory (read-only)</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="loginShell" class="form-label">Login Shell</label>
+                                        {% if session.is_super_admin %}
+                                        <input type="text" class="form-control" value="{{ user_data.attributes.get('loginShell', [''])[0] }}" readonly>
+                                        {% else %}
+                                        <select class="form-select" id="loginShell" name="loginShell">
+                                            {% set current_shell = user_data.attributes.get('loginShell', [''])[0] %}
+                                            <option value="/bin/bash" {% if current_shell == '/bin/bash' %}selected{% endif %}>/bin/bash</option>
+                                            <option value="/bin/sh" {% if current_shell == '/bin/sh' %}selected{% endif %}>/bin/sh</option>
+                                            <option value="/bin/zsh" {% if current_shell == '/bin/zsh' %}selected{% endif %}>/bin/zsh</option>
+                                            <option value="/bin/csh" {% if current_shell == '/bin/csh' %}selected{% endif %}>/bin/csh</option>
+                                            <option value="/bin/tcsh" {% if current_shell == '/bin/tcsh' %}selected{% endif %}>/bin/tcsh</option>
+                                            <option value="/usr/bin/fish" {% if current_shell == '/usr/bin/fish' %}selected{% endif %}>/usr/bin/fish</option>
+                                            <option value="/sbin/nologin" {% if current_shell == '/sbin/nologin' %}selected{% endif %}>/sbin/nologin (No login)</option>
+                                        </select>
+                                        <div class="form-text">Your default shell for system login</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Password Expiry Information -->
+                            {% if password_info %}
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <div class="alert {% if password_info.password_expired %}alert-danger{% elif password_info.password_expires_soon %}alert-warning{% else %}alert-info{% endif %}">
+                                        <h6 class="alert-heading">
+                                            <i class="fas fa-clock"></i> Password Status
+                                        </h6>
+                                        {% if password_info.password_expired %}
+                                        <p><strong>Password Expired!</strong> Your password expired {{ password_info.days_until_expire|abs }} days ago.</p>
+                                        {% elif password_info.password_expires_soon %}
+                                        <p><strong>Password Expires Soon:</strong> Your password will expire in {{ password_info.days_until_expire }} days.</p>
+                                        {% else %}
+                                        <p><strong>Password Status:</strong> Your password expires in {{ password_info.days_until_expire }} days.</p>
+                                        {% endif %}
+                                        <p class="mb-0"><small>Last changed: {{ password_info.days_since_change }} days ago</small></p>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if not session.is_super_admin %}
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Update Profile
+                    </button>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.profile-photo-large {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3px solid #dee2e6;
+}
+
+.profile-img-large {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+</style>
+{% endblock %}

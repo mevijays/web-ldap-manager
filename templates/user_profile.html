@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+
+{% block title %}{{ user_data.attributes.cn[0] if user_data.attributes.cn else 'Unknown User' }} - Profile{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <div class="profile-photo-large mb-3 mx-auto">
+                    <img src="{{ url_for('user_photo', username=user_data.attributes.uid[0]) }}" 
+                         alt="Profile Photo" class="profile-img-large"
+                         onerror="this.onerror=null; this.src='{{ url_for('static', filename='img/default-avatar.png') }}';">
+                </div>
+                <h4>{{ user_data.attributes.cn[0] if user_data.attributes.cn else 'Unknown User' }}</h4>
+                <p class="text-muted">@{{ user_data.attributes.uid[0] if user_data.attributes.uid else 'unknown' }}</p>
+                
+                <!-- Show admin badges -->
+                {% if user_data.attributes.uid[0] == 'admin' %}
+                <span class="badge bg-warning text-dark mb-2">
+                    <i class="fas fa-crown"></i> Super Administrator
+                </span>
+                {% else %}
+                <!-- Check if user is in admins group by checking session for current user or making assumption -->
+                {% if session.username == user_data.attributes.uid[0] and session.is_admin and not session.is_super_admin %}
+                <span class="badge bg-success mb-2">
+                    <i class="fas fa-cogs"></i> Administrator
+                </span>
+                {% endif %}
+                {% endif %}
+                
+                {% if user_data.attributes.description %}
+                <p class="text-muted">{{ user_data.attributes.description[0] }}</p>
+                {% endif %}
+                
+                <div class="mb-3">
+                    <a href="{{ url_for('user_search') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Directory
+                    </a>
+                </div>
+                
+                <!-- Photo upload form (only for own profile) -->
+                {% if session.username == user_data.attributes.uid[0] %}
+                <div class="mt-3">
+                    <hr>
+                    <h6 class="text-muted mb-3">Update Profile Photo</h6>
+                    
+                    <form action="{{ url_for('upload_photo') }}" method="post" enctype="multipart/form-data" class="mb-2">
+                        <div class="mb-3">
+                            <input type="file" class="form-control form-control-sm" name="photo" 
+                                   accept="image/*" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="fas fa-upload"></i> Upload Photo
+                        </button>
+                    </form>
+                    
+                    <form action="{{ url_for('delete_photo') }}" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-outline-danger btn-sm" 
+                                onclick="return confirm('Are you sure you want to delete your profile photo?')">
+                            <i class="fas fa-trash"></i> Remove Photo
+                        </button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title">
+                    <i class="fas fa-info-circle"></i> Profile Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <!-- Basic Information -->
+                    <div class="col-md-6">
+                        <h6 class="text-primary mb-3">
+                            <i class="fas fa-user"></i> Personal Details
+                        </h6>
+                        
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Full Name</label>
+                            <p class="mb-2">{{ user_data.attributes.cn[0] if user_data.attributes.cn else 'Not provided' }}</p>
+                        </div>
+                        
+                        {% if user_data.attributes.givenName %}
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">First Name</label>
+                            <p class="mb-2">{{ user_data.attributes.givenName[0] }}</p>
+                        </div>
+                        {% endif %}
+                        
+                        {% if user_data.attributes.sn %}
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Last Name</label>
+                            <p class="mb-2">{{ user_data.attributes.sn[0] }}</p>
+                        </div>
+                        {% endif %}
+                        
+                        {% if user_data.attributes.displayName %}
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Display Name</label>
+                            <p class="mb-2">{{ user_data.attributes.displayName[0] }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Contact Information -->
+                    <div class="col-md-6">
+                        <h6 class="text-primary mb-3">
+                            <i class="fas fa-address-book"></i> Contact Information
+                        </h6>
+                        
+                        {% if user_data.attributes.mail %}
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Email</label>
+                            <p class="mb-2">
+                                <a href="mailto:{{ user_data.attributes.mail[0] }}">{{ user_data.attributes.mail[0] }}</a>
+                            </p>
+                        </div>
+                        {% endif %}
+                        
+                        {% if user_data.attributes.telephoneNumber %}
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Phone</label>
+                            <p class="mb-2">
+                                <a href="tel:{{ user_data.attributes.telephoneNumber[0] }}">{{ user_data.attributes.telephoneNumber[0] }}</a>
+                            </p>
+                        </div>
+                        {% endif %}
+                        
+                        {% if user_data.attributes.homePhone %}
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Home Phone</label>
+                            <p class="mb-2">
+                                <a href="tel:{{ user_data.attributes.homePhone[0] }}">{{ user_data.attributes.homePhone[0] }}</a>
+                            </p>
+                        </div>
+                        {% endif %}
+                        
+                        {% if user_data.attributes.mobile %}
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Mobile</label>
+                            <p class="mb-2">
+                                <a href="tel:{{ user_data.attributes.mobile[0] }}">{{ user_data.attributes.mobile[0] }}</a>
+                            </p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Technical Information -->
+                <hr class="my-4">
+                <h6 class="text-primary mb-3">
+                    <i class="fas fa-cog"></i> Account Details
+                </h6>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Username</label>
+                            <p class="mb-2"><code>{{ user_data.attributes.uid[0] if user_data.attributes.uid else 'Not provided' }}</code></p>
+                        </div>
+                        
+                        {% if user_data.attributes.uidNumber %}
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">User ID</label>
+                            <p class="mb-2"><code>{{ user_data.attributes.uidNumber[0] }}</code></p>
+                        </div>
+                        {% endif %}
+                        
+                        {% if user_data.attributes.gidNumber %}
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Primary Group ID</label>
+                            <p class="mb-2"><code>{{ user_data.attributes.gidNumber[0] }}</code></p>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-6">
+                        {% if user_data.attributes.homeDirectory %}
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Home Directory</label>
+                            <p class="mb-2"><code>{{ user_data.attributes.homeDirectory[0] }}</code></p>
+                        </div>
+                        {% endif %}
+                        
+                        {% if user_data.attributes.loginShell %}
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Shell</label>
+                            <p class="mb-2"><code>{{ user_data.attributes.loginShell[0] }}</code></p>
+                        </div>
+                        {% endif %}
+                        
+                        {% if user_data.attributes.objectClass %}
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Object Classes</label>
+                            <div>
+                                {% for oc in user_data.attributes.objectClass %}
+                                <span class="badge bg-secondary me-1">{{ oc }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- All Attributes (Advanced) -->
+                <div class="mt-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="text-primary mb-0">
+                            <i class="fas fa-list"></i> All Attributes
+                        </h6>
+                        <button class="btn btn-sm btn-outline-secondary" type="button" 
+                                data-bs-toggle="collapse" data-bs-target="#allAttributes">
+                            <i class="fas fa-chevron-down"></i> Show All
+                        </button>
+                    </div>
+                    
+                    <div class="collapse mt-3" id="allAttributes">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Attribute</th>
+                                        <th>Value(s)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for attr_name, attr_value in user_data.attributes.items() %}
+                                    <tr>
+                                        <td><code>{{ attr_name }}</code></td>
+                                        <td>
+                                            {% if attr_value is iterable and attr_value is not string %}
+                                                {% for value in attr_value %}
+                                                    <div>{{ value }}</div>
+                                                {% endfor %}
+                                            {% else %}
+                                                {{ attr_value }}
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.avatar-circle-large {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background-color: #007bff;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile-photo-large {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3px solid #dee2e6;
+}
+
+.profile-img-large {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+</style>
+{% endblock %}

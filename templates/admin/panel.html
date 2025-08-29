@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Panel - LDAP Management Portal{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="fas fa-cogs"></i> Administrator Panel
+    </h1>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="fas fa-users fa-3x text-primary mb-3"></i>
+                <h5 class="card-title">User Management</h5>
+                <p class="card-text">Create, edit, and manage LDAP user accounts in the People organizational unit.</p>
+                <a href="{{ url_for('admin_users') }}" class="btn btn-primary">
+                    <i class="fas fa-users"></i> Manage Users
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="fas fa-layer-group fa-3x text-success mb-3"></i>
+                <h5 class="card-title">Group Management</h5>
+                <p class="card-text">Create and manage LDAP groups and their memberships in the Groups organizational unit.</p>
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('admin_groups') }}" class="btn btn-success">
+                        <i class="fas fa-layer-group"></i> Manage Groups
+                    </a>
+                    <a href="{{ url_for('admin_add_group') }}" class="btn btn-outline-success">
+                        <i class="fas fa-plus"></i> Add Group
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="fas fa-plus-circle fa-3x text-info mb-3"></i>
+                <h5 class="card-title">Add New User</h5>
+                <p class="card-text">Quickly create new user accounts with all required attributes.</p>
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('admin_add_user') }}" class="btn btn-info">
+                        <i class="fas fa-user-plus"></i> Add User
+                    </a>
+                    <a href="{{ url_for('admin_bulk_users') }}" class="btn btn-outline-info">
+                        <i class="fas fa-upload"></i> Bulk Create Users
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Second Row for Additional Features -->
+<div class="row mt-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="fas fa-file-csv fa-3x text-warning mb-3"></i>
+                <h5 class="card-title">Bulk Operations</h5>
+                <p class="card-text">Upload CSV files to create multiple users at once. Supports both standard and POSIX users.</p>
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('admin_bulk_users') }}" class="btn btn-warning">
+                        <i class="fas fa-upload"></i> Bulk Create Users
+                    </a>
+                    <a href="{{ url_for('admin_download_sample_csv') }}" class="btn btn-outline-warning">
+                        <i class="fas fa-download"></i> Sample CSV
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="fas fa-chart-bar fa-3x text-secondary mb-3"></i>
+                <h5 class="card-title">LDAP Statistics</h5>
+                <p class="card-text">View comprehensive statistics about your LDAP directory including user counts and account types.</p>
+                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                    <i class="fas fa-chart-bar"></i> View Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="fas fa-shield-alt fa-3x text-danger mb-3"></i>
+                <h5 class="card-title">Account Security</h5>
+                <p class="card-text">Manage password policies, account locks, and security settings for LDAP users.</p>
+                <a href="{{ url_for('admin_users') }}" class="btn btn-danger">
+                    <i class="fas fa-shield-alt"></i> Security Settings
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle"></i> LDAP Directory Structure
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-folder"></i> Base DN</h6>
+                        <code>dc=mylab,dc=lan</code>
+                        
+                        <h6 class="mt-3"><i class="fas fa-folder-open"></i> Organizational Units</h6>
+                        <ul class="list-unstyled">
+                            <li><code>ou=People,dc=mylab,dc=lan</code></li>
+                            <li><code>ou=Groups,dc=mylab,dc=lan</code></li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-user-cog"></i> Admin DN</h6>
+                        <code>cn=admin,dc=mylab,dc=com</code>
+                        
+                        <h6 class="mt-3"><i class="fas fa-server"></i> Server Information</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>Host:</strong> 192.168.1.1</li>
+                            <li><strong>Port:</strong> 389</li>
+                            <li><strong>Protocol:</strong> LDAP</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-tools"></i> Quick Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="btn-group" role="group">
+                    <a href="{{ url_for('admin_add_user') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-user-plus"></i> Add User
+                    </a>
+                    <a href="{{ url_for('admin_add_group') }}" class="btn btn-outline-success">
+                        <i class="fas fa-plus"></i> Add Group
+                    </a>
+                    <a href="{{ url_for('admin_users') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-users"></i> List Users
+                    </a>
+                    <a href="{{ url_for('admin_groups') }}" class="btn btn-outline-info">
+                        <i class="fas fa-layer-group"></i> List Groups
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

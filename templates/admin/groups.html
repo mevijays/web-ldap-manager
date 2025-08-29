@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Groups - LDAP Management Portal{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="fas fa-layer-group"></i> Group Management
+    </h1>
+    <a href="{{ url_for('admin_add_group') }}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Add New Group
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-list"></i> LDAP Groups
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if groups %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Group Name</th>
+                                <th>Description</th>
+                                <th>Members</th>
+                                <th>Type</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for group in groups %}
+                            <tr>
+                                <td>
+                                    <strong>{{ group.attributes.get('cn', ['N/A'])[0] }}</strong>
+                                </td>
+                                <td>{{ group.attributes.get('description', ['No description'])[0] }}</td>
+                                <td>
+                                    {% set member_count = (group.attributes.get('member', [])|length) + (group.attributes.get('memberUid', [])|length) %}
+                                    <span class="badge bg-primary">
+                                        {{ member_count }} members
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if group.attributes.get('gidNumber') %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-server"></i> POSIX Group
+                                        </span>
+                                        <br>
+                                        <small class="text-muted">GID: {{ group.attributes.get('gidNumber', ['N/A'])[0] }}</small>
+                                    {% else %}
+                                        <span class="badge bg-secondary">
+                                            <i class="fas fa-users"></i> Standard Group
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <a href="{{ url_for('admin_group_members', group_dn=group.dn) }}" 
+                                           class="btn btn-outline-info">
+                                            <i class="fas fa-users"></i> Members
+                                        </a>
+                                        <a href="{{ url_for('admin_edit_entry', entry_dn=group.dn) }}" 
+                                           class="btn btn-outline-primary">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </a>
+                                        <button type="button" class="btn btn-outline-danger"
+                                                data-group-dn="{{ group.dn }}"
+                                                data-group-name="{{ group.attributes.get('cn', ['Unknown'])[0] }}"
+                                                onclick="confirmDelete(this)">
+                                            <i class="fas fa-trash"></i> Delete
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-layer-group fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No Groups Found</h5>
+                    <p class="text-muted">No groups found in the Groups organizational unit.</p>
+                    <a href="{{ url_for('admin_add_group') }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Create First Group
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete confirmation modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Deletion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the group <strong id="deleteGroupName"></strong>?</p>
+                <p class="text-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    This action cannot be undone and will affect all group members.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> Delete Group
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function confirmDelete(button) {
+    const groupDn = button.getAttribute('data-group-dn');
+    const groupName = button.getAttribute('data-group-name');
+    
+    document.getElementById('deleteGroupName').textContent = groupName;
+    const form = document.querySelector('#deleteModal form');
+    form.action = '/admin/delete_entry/' + encodeURIComponent(groupDn);
+    
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    modal.show();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}User Directory{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title">
+                    <i class="fas fa-users"></i> User Directory
+                </h5>
+            </div>
+            <div class="card-body">
+                <!-- Search Form -->
+                <form method="GET" class="mb-4">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="input-group">
+                                <input type="text" class="form-control" name="q" 
+                                       placeholder="Search by username, name, or email..." 
+                                       value="{{ search_query }}">
+                                <button class="btn btn-primary" type="submit">
+                                    <i class="fas fa-search"></i> Search
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            {% if search_query %}
+                            <a href="{{ url_for('user_search') }}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Clear
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Results -->
+                {% if search_query %}
+                <h6 class="text-muted mb-3">
+                    Search results for "{{ search_query }}" ({{ users|length }} found)
+                </h6>
+                {% else %}
+                <h6 class="text-muted mb-3">
+                    All users ({{ users|length }} total)
+                </h6>
+                {% endif %}
+
+                {% if users %}
+                <div class="row">
+                    {% for user in users %}
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="profile-photo-small me-3">
+                                        <img src="{{ url_for('user_photo', username=user.attributes.uid[0]) }}" 
+                                             alt="Profile Photo" class="profile-img-small"
+                                             onerror="this.onerror=null; this.src='{{ url_for('static', filename='img/default-avatar.png') }}';">
+                                    </div>
+                                    <div>
+                                        <h6 class="card-title mb-1">
+                                            {{ user.attributes.cn[0] if user.attributes.cn else 'Unknown' }}
+                                        </h6>
+                                        <small class="text-muted">
+                                            @{{ user.attributes.uid[0] if user.attributes.uid else 'unknown' }}
+                                        </small>
+                                    </div>
+                                </div>
+                                
+                                {% if user.attributes.mail %}
+                                <p class="card-text text-muted small">
+                                    <i class="fas fa-envelope me-1"></i>
+                                    {{ user.attributes.mail[0] }}
+                                </p>
+                                {% endif %}
+                                
+                                {% if user.attributes.telephoneNumber %}
+                                <p class="card-text text-muted small">
+                                    <i class="fas fa-phone me-1"></i>
+                                    {{ user.attributes.telephoneNumber[0] }}
+                                </p>
+                                {% endif %}
+                                
+                                {% if user.attributes.description %}
+                                <p class="card-text small">
+                                    {{ user.attributes.description[0][:60] }}
+                                    {% if user.attributes.description[0]|length > 60 %}...{% endif %}
+                                </p>
+                                {% endif %}
+                                
+                                <div class="mt-auto">
+                                    <a href="{{ url_for('user_profile', username=user.attributes.uid[0]) }}" 
+                                       class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-eye"></i> View Profile
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No users found</h5>
+                    {% if search_query %}
+                    <p class="text-muted">Try adjusting your search terms</p>
+                    {% else %}
+                    <p class="text-muted">No users exist in the directory</p>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.avatar-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #007bff;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+}
+
+.profile-photo-small {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 2px solid #dee2e6;
+}
+
+.profile-img-small {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+</style>
+{% endblock %}
