@@ -1820,4 +1820,7 @@ def admin_remove_photo(user_dn):
 
 if __name__ == '__main__':
     # Production configuration - debug disabled for security
-    app.run(debug=False, host='0.0.0.0', port=5000)
+    # Bind to localhost only for security - use reverse proxy for external access
+    host = os.getenv('HOST', '127.0.0.1')  # Default to localhost, override via environment
+    port = int(os.getenv('PORT', '5000'))
+    app.run(debug=False, host=host, port=port)

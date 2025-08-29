@@ -70,3 +70,20 @@ logs/
 # Test files
 test_*.py
 *_test.py
+
+# Security - Credential Protection
+*.env
+*production.env*
+*config/production.env*
+.env.*
+secrets.*
+credentials.*
+passwords.*
+*secrets*
+*credentials*
+config/production.env
+config/*.env
+
+# Flask session files
+flask_session/
+instance/
